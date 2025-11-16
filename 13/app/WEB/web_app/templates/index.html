@@ -3,46 +3,157 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Загрузка CSV файла</title>
+    <title>CSV Uploader and ML Runner</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
 </head>
 <body>
     <div class="container mt-5">
-        <div class="row justify-content-center">
-            <div class="col-md-6">
-                <div class="card">
-                    <div class="card-header">
-                        <h4 class="mb-0">Загрузка CSV файла</h4>
+        <h1 class="mb-4">Загрузка CSV данных и запуск ML модели</h1>
+
+        {% if message %}
+        <div class="alert alert-{{ message_type }} alert-dismissible fade show" role="alert">
+            {{ message }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+        {% endif %}
+
+        <!-- Форма загрузки данных -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5>Шаг 1: Загрузка данных</h5>
+            </div>
+            <div class="card-body">
+                <form action="/upload/" method="post" enctype="multipart/form-data">
+                    <div class="mb-3">
+                        <label for="file" class="form-label">Выберите CSV файл:</label>
+                        <input class="form-control" type="file" id="file" name="file" accept=".csv" required>
                     </div>
-                    <div class="card-body">
-                        {% if message %}
-                            <div class="alert alert-{{ message_type }} alert-dismissible fade show" role="alert">
-                                {{ message }}
-                                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-                            </div>
-                        {% endif %}
+                    <div class="mb-3">
+                        <label for="num_points" class="form-label">Количество точек коллокации:</label>
+                        <input type="number" class="form-control" id="num_points" name="num_points" value="300" min="1" required>
+                    </div>
+                    <button type="submit" class="btn btn-primary">Загрузить данные</button>
+                </form>
+            </div>
+        </div>
 
-                        <form action="/upload/" method="post" enctype="multipart/form-data">
-                            <div class="mb-3">
-                                <label for="file" class="form-label">Выберите CSV файл:</label>
-                                <input class="form-control" type="file" id="file" name="file" accept=".csv" required>
-                            </div>
+        <!-- Кнопка запуска ML модели -->
+        <div class="card">
+            <div class="card-header">
+                <h5>Шаг 2: Запуск ML модели (PINN)</h5>
+            </div>
+            <div class="card-body">
+                {% if data_loaded %}
+                <form action="/run_ml/" method="post" id="mlForm">
+                    <button type="submit" class="btn btn-success" id="mlButton">
+                        Запустить ML модель (PINN)
+                    </button>
+                    <div id="loadingSpinner" class="mt-2" style="display: none;">
+                        <div class="spinner-border spinner-border-sm text-success" role="status">
+                            <span class="visually-hidden">Загрузка...</span>
+                        </div>
+                        <span class="ms-2">ML модель выполняется... Это может занять несколько минут.</span>
+                    </div>
+                    <small class="form-text text-muted">Данные загружены. Можно запускать Physics-Informed Neural Network.</small>
+                </form>
+                {% else %}
+                <button type="button" class="btn btn-secondary" disabled>Запустить ML модель</button>
+                <small class="form-text text-muted">Сначала загрузите данные чтобы активировать эту кнопку.</small>
+                {% endif %}
+            </div>
+        </div>
 
-                            <div class="mb-3">
-                                <label for="num_points" class="form-label">Количество точек коллокации:</label>
-                                <input type="number" class="form-control" id="num_points" name="num_points" value="300" min="1">
-                            </div>
+        <!-- Результаты ML модели -->
+        {% if ml_results %}
+        <div class="card mt-4">
+            <div class="card-header bg-success text-white">
+                <h5>Результаты ML модели</h5>
+            </div>
+            <div class="card-body">
+                <!-- График обучения -->
+                {% if ml_results.training_plot %}
+                <div class="mb-4">
+                    <h6>График обучения</h6>
+                    <img src="{{ ml_results.training_plot }}" class="img-fluid" alt="Training Plot" style="max-height: 500px;">
+                </div>
+                {% endif %}
 
-                            <div class="d-grid gap-2">
-                                <button type="submit" class="btn btn-primary">Загрузить и обработать</button>
-                            </div>
-                        </form>
+                <!-- Статистика обучения -->
+                {% if ml_results.training_stats %}
+                <div class="mb-4">
+                    <h6>Статистика обучения</h6>
+                    <div class="row">
+                        <div class="col-md-4">
+                            <strong>Финальные потери:</strong>
+                            <ul class="list-unstyled">
+                                <li>Общие: {{ "%.2e"|format(ml_results.training_stats.final_total_loss) }}</li>
+                                <li>Данные: {{ "%.2e"|format(ml_results.training_stats.final_data_loss) }}</li>
+                                <li>Уравнение: {{ "%.2e"|format(ml_results.training_stats.final_pde_loss) }}</li>
+                            </ul>
+                        </div>
+                        <div class="col-md-4">
+                            <strong>Минимальные потери:</strong>
+                            <ul class="list-unstyled">
+                                <li>Общие: {{ "%.2e"|format(ml_results.training_stats.min_total_loss) }}</li>
+                                <li>Данные: {{ "%.2e"|format(ml_results.training_stats.min_data_loss) }}</li>
+                                <li>Уравнение: {{ "%.2e"|format(ml_results.training_stats.min_pde_loss) }}</li>
+                            </ul>
+                        </div>
+                        <div class="col-md-4">
+                            <strong>Общая информация:</strong>
+                            <ul class="list-unstyled">
+                                <li>Эпох: {{ ml_results.training_epochs }}</li>
+                                <li>Слоев: {{ ml_results.model_layers }}</li>
+                                <li>Лучшие потери: {{ "%.2e"|format(ml_results.best_loss) }}</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
+
+                <!-- Детальная информация -->
+                <div class="mt-3">
+                    <h6>Детальная информация</h6>
+                    <div class="table-responsive">
+                        <table class="table table-sm">
+                            <tr>
+                                <th>Границы области (lb):</th>
+                                <td>{{ ml_results.domain_bounds.lb }}</td>
+                            </tr>
+                            <tr>
+                                <th>Границы области (ub):</th>
+                                <td>{{ ml_results.domain_bounds.ub }}</td>
+                            </tr>
+                            <tr>
+                                <th>Размер X_u_train:</th>
+                                <td>{{ ml_results.data_shapes.X_u_train }}</td>
+                            </tr>
+                            <tr>
+                                <th>Размер u_train:</th>
+                                <td>{{ ml_results.data_shapes.u_train }}</td>
+                            </tr>
+                            <tr>
+                                <th>Размер X_f_train:</th>
+                                <td>{{ ml_results.data_shapes.X_f_train }}</td>
+                            </tr>
+                        </table>
                     </div>
                 </div>
             </div>
         </div>
+        {% endif %}
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        document.getElementById('mlForm')?.addEventListener('submit', function() {
+            const button = document.getElementById('mlButton');
+            const spinner = document.getElementById('loadingSpinner');
+
+            button.disabled = true;
+            button.textContent = 'Выполняется...';
+            spinner.style.display = 'block';
+        });
+    </script>
 </body>
 </html>
