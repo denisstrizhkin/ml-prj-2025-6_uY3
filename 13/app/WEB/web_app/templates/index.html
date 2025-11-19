@@ -176,6 +176,11 @@
                                     <th>Оптимизатор:</th>
                                     <td>{{ ml_results.optimizer }}</td>
                                 </tr>
+
+                                <tr>
+                                    <th>Время обучения:</th>
+                                    <td>{{ ml_results.training_model_time|round(2) }} с</td>
+                                </tr>
                                 <tr>
                                     <th>Лучшая ошибка:</th>
                                     <td>{{ "%.2e"|format(ml_results.best_loss) }}</td>
@@ -190,6 +195,66 @@
                         </table>
                     </div>
                 </div>
+
+                <!-- Кнопка скачивания модели -->
+                {% if ml_results.status == "success" %}
+                <div class="mt-3">
+                    <a href="/download_model" class="btn btn-outline-primary">
+                        Скачать модель (Keras)
+                    </a>
+                    <small class="form-text text-muted">Скачайте обученную модель в формате Keras для дальнейшего использования.</small>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Форма для предсказания -->
+        {% if ml_results and ml_results.status == "success" %}
+        <div class="card mt-4">
+            <div class="card-header bg-info text-white">
+                <h5>Шаг 3: Предсказание модели</h5>
+            </div>
+            <div class="card-body">
+                <form action="/predict/" method="post" id="predictForm">
+                    <div class="row mb-3">
+                        <div class="col-md-4">
+                            <label for="num_x_points" class="form-label">Количество точек по X:</label>
+                            <input type="number" class="form-control" id="num_x_points" name="num_x_points" value="100" min="10" max="1000" required>
+                            <div class="form-text">10-1000 точек</div>
+                        </div>
+                        <div class="col-md-4">
+                            <label for="prediction_time" class="form-label">Время для предсказания (t):</label>
+                            <input type="number" class="form-control" id="prediction_time" name="prediction_time" value="0.5" step="0.1" min="0" required>
+                            <div class="form-text">Момент времени</div>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">&nbsp;</label>
+                            <button type="submit" class="btn btn-info w-100" id="predictButton">
+                                Построить предсказание
+                            </button>
+                            <div id="predictLoading" class="mt-2" style="display: none;">
+                                <div class="spinner-border spinner-border-sm text-info" role="status">
+                                    <span class="visually-hidden">Загрузка...</span>
+                                </div>
+                                <span class="ms-2">Построение графика...</span>
+                            </div>
+                        </div>
+                    </div>
+                </form>
+
+                <!-- Результаты предсказания -->
+                {% if prediction_results %}
+                <div class="mt-4">
+                    <h6>Предсказание модели в момент времени t = {{ prediction_results.prediction_time }} ({{ prediction_results.num_x_points }} точек)</h6>
+
+                    {% if prediction_results.prediction_plot %}
+                    <div class="mb-4">
+                        <img src="{{ prediction_results.prediction_plot }}" class="img-fluid" alt="Prediction Plot" style="max-height: 500px;">
+                    </div>
+                    {% endif %}
+                </div>
+                {% endif %}
             </div>
         </div>
         {% endif %}
@@ -227,6 +292,16 @@
             spinner.style.display = 'block';
         });
 
+        // Обработка формы предсказания
+        document.getElementById('predictForm')?.addEventListener('submit', function() {
+            const button = document.getElementById('predictButton');
+            const spinner = document.getElementById('predictLoading');
+
+            button.disabled = true;
+            button.textContent = 'Построение...';
+            spinner.style.display = 'block';
+        });
+
         // Валидация параметров ML
         document.getElementById('num_layers')?.addEventListener('change', function() {
             const value = parseInt(this.value);
@@ -246,6 +321,18 @@
             if (value > 100000) this.value = 100000;
             // Округление до ближайшей 1000
             this.value = Math.round(value / 1000) * 1000;
+        });
+
+        // Валидация параметров предсказания
+        document.getElementById('num_x_points')?.addEventListener('change', function() {
+            const value = parseInt(this.value);
+            if (value < 10) this.value = 10;
+            if (value > 1000) this.value = 1000;
+        });
+
+        document.getElementById('prediction_time')?.addEventListener('change', function() {
+            const value = parseFloat(this.value);
+            if (value < 0) this.value = 0;
         });
 
         // Пример конфигурации весов ошибок

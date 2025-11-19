@@ -3,13 +3,28 @@ from DataLoadFromDB import PINNDataLoader
 from Client_ClickHouse import client
 from PINN import PINN
 from PINN import init_model_params
-from PINN import save_model
+from PINN import save_model_to_minio
 import traceback
+import time
+import os
+from minio import Minio
+import uuid
+
+
+def get_minio_client():
+    return Minio(
+        os.getenv("MINIO_ENDPOINT", "minio-service:9000"),
+        access_key=os.getenv("MINIO_ACCESS_KEY", "admin"),
+        secret_key=os.getenv("MINIO_SECRET_KEY", "admin123"),
+        secure=False
+    )
 
 
 def train_pinn_model(num_layers, num_perceptrons, num_epoch, optimizer, loss_weights_config=""):
     print(f"Полученная конфигурация весов: '{loss_weights_config}'")
     try:
+        start_time = time.time()
+
         # Инициализация загрузчика данных
         data_loader = PINNDataLoader(client)
 
@@ -36,7 +51,17 @@ def train_pinn_model(num_layers, num_perceptrons, num_epoch, optimizer, loss_wei
         # Создание и обучение модели с передачей конфигурации весов
         pinn = PINN(layers, tf_optimizer, logger, X_f_train, lb, ub)
         training_results = pinn.fit(X_u_train, u_train, tf_epochs, loss_weights_config)
-        save_model(pinn)
+
+        end_time = time.time()
+        training_duration = end_time - start_time
+
+        # Сохраняем модель в MinIO с уникальным именем
+        model_id = f"pinn_model_{int(time.time())}"
+        model_saved = save_model_to_minio(pinn, model_id)
+
+        if not model_saved:
+            return {"status": "error", "message": "Ошибка при сохранении модели в MinIO"}
+
         # Получаем график и статистику обучения
         training_plot = logger.get_training_plot()
 
@@ -44,13 +69,15 @@ def train_pinn_model(num_layers, num_perceptrons, num_epoch, optimizer, loss_wei
         results = {
             "status": "success",
             "message": "ML модель успешно обучена",
+            "training_model_time": round(training_duration, 2),
             "training_epochs": tf_epochs,
             "model_layers": len(layers),
             "num_perceptrons": num_perceptrons,
             "optimizer": optimizer,
             "best_loss": float(training_results["best_loss"]),
             "training_plot": training_plot,
-            "loss_weights_used": loss_weights_config if loss_weights_config else "равные веса [1.0, 1.0]"
+            "loss_weights_used": loss_weights_config if loss_weights_config else "равные веса [1.0, 1.0]",
+            "model_id": model_id  # Возвращаем ID модели для скачивания
         }
 
         return results

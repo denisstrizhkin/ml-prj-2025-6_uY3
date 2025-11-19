@@ -1,0 +1,49 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: web-service
+  namespace: pinn-app
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: web-service
+  template:
+    metadata:
+      labels:
+        app: web-service
+    spec:
+      containers:
+      - name: web-service
+        image: web-service:latest
+        imagePullPolicy: IfNotPresent  # Добавьте эту строку
+        ports:
+        - containerPort: 8000
+        env:
+        - name: CLICKHOUSE_HOST
+          value: "clickhouse-service"
+        - name: CLICKHOUSE_PORT
+          value: "9000"
+        - name: CLICKHOUSE_USER
+          value: "user"
+        - name: CLICKHOUSE_PASSWORD
+          value: "123"
+        - name: CLICKHOUSE_DB
+          value: "db"
+        - name: MINIO_ENDPOINT
+          value: "minio-service:9000"
+        - name: MINIO_ACCESS_KEY
+          value: "admin"
+        - name: MINIO_SECRET_KEY
+          value: "admin123"
+        - name: MINIO_SECURE
+          value: "false"
+        - name: ML_SERVICE_URL
+          value: "http://ml-service:8001"
+        resources:
+          requests:
+            memory: "1Gi"
+            cpu: "500m"
+          limits:
+            memory: "2Gi"
+            cpu: "1000m"

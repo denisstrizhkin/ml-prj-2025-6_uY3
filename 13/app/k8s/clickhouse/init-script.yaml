@@ -1,0 +1,10 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: clickhouse-init
+  namespace: pinn-app
+data:
+  init-db.sql: |
+    CREATE DATABASE IF NOT EXISTS db;
+    CREATE USER IF NOT EXISTS user IDENTIFIED BY '123';
+    GRANT ALL ON db.* TO user;

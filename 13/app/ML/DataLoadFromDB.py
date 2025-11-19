@@ -44,3 +44,15 @@ class PINNDataLoader:
         lb = all_points.min(axis=0)
         ub = all_points.max(axis=0)
         return lb, ub
+
+
+    def load_original_data(self):
+        try:
+            query = f"SELECT x, t, value FROM {self.database}.OriginalData"
+            result = self.client.execute(query)
+            df = pd.DataFrame(result, columns=['x', 't', 'value'])
+            print(f"Загружено {len(df)} оригинальных записей")
+            return df
+        except Exception as e:
+            print(f"Ошибка при загрузке оригинальных данных: {e}")
+            return None

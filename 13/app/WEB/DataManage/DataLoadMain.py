@@ -12,4 +12,3 @@ def data_main(filepath, num_collocation_points):
         print("Произошла ошибка при обработке данных!")
 
     return success
-

@@ -6,3 +6,5 @@ clickhouse-driver
 pandas
 numpy
 httpx
+minio
+pyDOE

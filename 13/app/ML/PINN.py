@@ -1,5 +1,103 @@
 import tensorflow as tf
 import math
+import io
+import os
+from minio import Minio
+import tempfile
+
+def get_minio_client():
+    return Minio(
+        os.getenv("MINIO_ENDPOINT", "minio-service:9000"),
+        access_key=os.getenv("MINIO_ACCESS_KEY", "admin"),
+        secret_key=os.getenv("MINIO_SECRET_KEY", "admin123"),
+        secure=False
+    )
+
+
+def save_model_to_minio(model, model_id):
+    """Сохраняет модель в MinIO"""
+    try:
+        # Создаем временный файл с правильным расширением
+        with tempfile.NamedTemporaryFile(suffix='.keras', delete=False) as tmp_file:
+            tmp_path = tmp_file.name
+
+        # Сохраняем модель во временный файл
+        model.u_model.save(tmp_path)
+
+        # Читаем содержимое файла
+        with open(tmp_path, 'rb') as f:
+            model_data = f.read()
+
+        # Создаем буфер из данных
+        model_buffer = io.BytesIO(model_data)
+        model_buffer.seek(0)
+
+        # Получаем клиент MinIO
+        minio_client = get_minio_client()
+
+        # Создаем бакет если не существует
+        bucket_name = "models"
+        if not minio_client.bucket_exists(bucket_name):
+            minio_client.make_bucket(bucket_name)
+
+        # Сохраняем модель в MinIO
+        minio_client.put_object(
+            bucket_name,
+            f"{model_id}.keras",
+            model_buffer,
+            length=len(model_data)
+        )
+
+        # Удаляем временный файл
+        os.unlink(tmp_path)
+
+        print(f"Модель сохранена в MinIO с ID: {model_id}")
+        return True
+
+    except Exception as e:
+        print(f"Ошибка при сохранении модели в MinIO: {e}")
+        # Убедимся, что временный файл удален даже при ошибке
+        try:
+            if 'tmp_path' in locals() and os.path.exists(tmp_path):
+                os.unlink(tmp_path)
+        except:
+            pass
+        return False
+
+
+def load_model_from_minio(model_id):
+    """Загружает модель из MinIO"""
+    try:
+        minio_client = get_minio_client()
+
+        # Получаем модель из MinIO
+        response = minio_client.get_object("models", f"{model_id}.keras")
+        model_data = response.read()
+
+        # Создаем временный файл для загрузки
+        with tempfile.NamedTemporaryFile(suffix='.keras', delete=False) as tmp_file:
+            tmp_file.write(model_data)
+            tmp_file.flush()
+
+            # Загружаем модель из временного файла
+            model = tf.keras.models.load_model(tmp_file.name)
+
+            # Удаляем временный файл
+            os.unlink(tmp_file.name)
+
+        print(f"Модель загружена из MinIO с ID: {model_id}")
+        return model
+
+    except Exception as e:
+        print(f"Ошибка при загрузке модели из MinIO: {e}")
+        # Убедимся, что временный файл удален даже при ошибке
+        try:
+            if 'tmp_file' in locals():
+                os.unlink(tmp_file.name)
+        except:
+            pass
+        return None
+
 
 
 def init_model_params(num_layers, num_perceptrons, num_epoch, optimizer):
@@ -227,7 +325,7 @@ class PINN(object):
     def predict(self, X):
         return self.u_model(X)
 
-def save_model(model, save_dir="pinn_model_without_norm1111.keras"):
+def save_model(model, save_dir="pinn_model.keras"):
 
     model.u_model.save(save_dir)
     print(f"Модель сохранена в {save_dir}")
