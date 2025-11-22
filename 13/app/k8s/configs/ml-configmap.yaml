@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: ml-config
+  namespace: pinn-app
+data:
+  CLICKHOUSE_HOST: "clickhouse"
+  CLICKHOUSE_PORT: "9000"
+  MINIO_ENDPOINT: "minio:9000"
+  MINIO_ACCESS_KEY: "admin"
+  MINIO_SECRET_KEY: "admin123"
+  MINIO_SECURE: "false"
+  MODEL_BUCKET: "models"
+  PLOTS_BUCKET: "plots"
+  TEMP_BUCKET: "temp-files"
