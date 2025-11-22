@@ -7,6 +7,12 @@ spec:
   selector:
     app: clickhouse
   ports:
-    - protocol: TCP
+    - name: native
+      protocol: TCP
       port: 9000
       targetPort: 9000
+    - name: http
+      protocol: TCP
+      port: 8123
+      targetPort: 8123
+  type: ClusterIP

@@ -6,9 +6,9 @@ from PINN import init_model_params
 from PINN import save_model_to_minio
 import traceback
 import time
-import os
-from Minio_Client import minio_client
-import uuid
+#import os
+#from Minio_Client import minio_client
+#import uuid
 
 
 #def get_minio_client():

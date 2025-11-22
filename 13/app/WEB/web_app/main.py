@@ -12,6 +12,7 @@ from datetime import datetime
 from DataManage.Minio_Client import minio_client
 import io
 #import uuid
+from fastapi.staticfiles import StaticFiles
 
 app = FastAPI(title="CSV Uploader and ML Runner")
 
@@ -37,6 +38,7 @@ from DataManage.DataLoadMain import data_main
 current_dir = os.path.dirname(os.path.abspath(__file__))
 templates_dir = os.path.join(current_dir, "templates")
 temp_dir = os.path.join(current_dir, "temp")
+static_dir = os.path.join(current_dir, "static")
 
 templates = Jinja2Templates(directory=templates_dir)
 
@@ -47,7 +49,7 @@ last_model_id = None  # Будет хранить ID последней обуч
 ml_results = None  # Сохраняем результаты ML модели
 prediction_results = None  # Сохраняем результаты предсказания
 
-#app.mount("/static", StaticFiles(directory="./static"), name="static")
+app.mount("/static", StaticFiles(directory=static_dir), name="static")
 
 
 def clear_temp_directory():

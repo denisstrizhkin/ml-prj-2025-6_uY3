@@ -3,7 +3,7 @@ import io
 import base64
 import numpy as np
 from typing import Dict, List, Optional
-import os
+#import os
 
 
 class TrainingVisualizer:
@@ -92,25 +92,25 @@ class PredictionVisualizer:
 
 
             # Основное предсказание
-            plt.plot( x_points, predictions,'b-', linewidth=2, label='Предсказание PINN')
+            plt.plot( x_points, predictions, color="navy", linewidth=2, label='Предсказание PINN')
 
 
             # Граничные точки, если переданы
             if (boundary_x is not None and boundary_true is not None and boundary_pred is not None):
 
-                # Фактические граничные точки
-                plt.scatter(boundary_x, boundary_true, color='red', s=80, alpha=0.8, label='Граничные точки (исх. данные)', zorder=5)
+
 
                 # Предсказания для граничных точек
-                plt.scatter(boundary_x, boundary_pred, color='green', s=80, alpha=0.8, label='Предсказания для граничных точек', zorder=5, marker='s')
-
+                plt.scatter(boundary_x, boundary_pred, color='black', s=80, alpha=0.8, label='Предсказания для граничных точек', zorder=5, marker='s')
+                plt.scatter(boundary_x, boundary_true, color='red', s=80, alpha=0.8,
+                            label='Граничные точки (исх. данные)', zorder=5)
 
 
                 # Линии разницы между фактическими и предсказанными значениями
                 for i, (x_val, true_val, pred_val) in enumerate(zip(
                         boundary_x, boundary_true, boundary_pred
                 )):
-                    plt.plot([x_val, x_val], [true_val, pred_val], 'r--', linewidth=2, alpha=0.7, label='Ошибка' if i == 0 else "")
+                    plt.plot([x_val, x_val], [true_val, pred_val], color="blue", linestyle="--", linewidth=0.5, alpha=0.5, label='Ошибка' if i == 0 else "")
 
 
 
