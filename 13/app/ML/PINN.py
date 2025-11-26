@@ -317,7 +317,8 @@ class PINN(object):
 
         for epoch in range(tf_epochs):
 
-            # Определяем веса для текущей эпохи
+            # Определяем веса для текущей
+            # эпохи
             current_weights = get_loss_weights_for_epoch(epoch, loss_weights_schedule)
 
             total_loss, data_loss, pde_loss = self.train_step(X_u, u, current_weights)
