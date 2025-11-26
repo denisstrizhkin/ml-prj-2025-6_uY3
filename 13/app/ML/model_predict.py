@@ -15,7 +15,7 @@ class PredictionManager:
         self.visualizer = PredictionVisualizer()
 
     def load_model(self):
-        """Загрузка обученной модели"""
+
         if not os.path.exists(self.model_path):
             raise FileNotFoundError(f"Модель не найдена: {self.model_path}")
 
@@ -24,7 +24,7 @@ class PredictionManager:
         return True
 
     def get_domain_bounds(self, original_data):
-        """Получение границ области данных"""
+
         x_min = float(original_data['x'].min())
         x_max = float(original_data['x'].max())
         t_min = float(original_data['t'].min())
@@ -34,11 +34,7 @@ class PredictionManager:
         return x_min, x_max, t_min, t_max
 
     def get_boundary_points(self, original_data, target_time, t_min):
-        """
-        Получаем граничные точки:
-        - Для t=0: все начальные точки
-        - Для t>0: только две точки - минимальный и максимальный x
-        """
+
         if original_data.empty:
             return original_data
 
@@ -85,7 +81,7 @@ class PredictionManager:
         return boundary_points
 
     def prepare_prediction_data(self, x_min, x_max, t_min, t_max, num_x_points, prediction_time):
-        """Подготовка данных для предсказания"""
+
         # Создаем сетку для предсказания в оригинальных координатах
         x_points = np.linspace(x_min, x_max, num_x_points).reshape(-1, 1)
 
@@ -99,7 +95,7 @@ class PredictionManager:
         return x_points, X_pred
 
     def predict_boundary_points(self, boundary_points, x_min, x_max, t_min, t_max, prediction_time):
-        """Предсказание для граничных точек"""
+
         if boundary_points.empty:
             return None
 
@@ -116,7 +112,7 @@ class PredictionManager:
         return boundary_predictions
 
     def make_prediction(self, num_x_points=100, prediction_time=0.5):
-        """Основной метод для выполнения предсказания"""
+
         try:
             # Загружаем модель если еще не загружена
             if self.model is None:

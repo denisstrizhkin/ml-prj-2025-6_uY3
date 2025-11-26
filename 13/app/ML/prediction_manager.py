@@ -155,7 +155,7 @@ class PredictionManager:
         return boundary_predictions
 
     def make_prediction(self, num_x_points=100, prediction_time=0.5):
-        """Основной метод для выполнения предсказания"""
+
         try:
             # Загружаем модель если еще не загружена
             if self.model is None:

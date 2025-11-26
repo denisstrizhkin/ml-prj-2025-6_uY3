@@ -9,7 +9,7 @@ class PINNDataLoader:
         self.database = database
 
     def load_training_data(self):
-        """Загрузка тренировочных данных (граничные и начальные условия)"""
+
         try:
             query = f"SELECT x, t, value FROM {self.database}.TableTrainData"
             result = self.client.execute(query)
@@ -26,7 +26,7 @@ class PINNDataLoader:
             return None, None
 
     def load_collocation_points(self):
-        """Загрузка коллокационных точек"""
+
         try:
             query = f"SELECT x, t FROM {self.database}.CollocatePointsTable"
             result = self.client.execute(query)
