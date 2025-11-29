@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: clickhouse-init
+  namespace: pinn-app
+data:
+  init-db.sql: |
+    CREATE DATABASE IF NOT EXISTS db;
+    CREATE USER IF NOT EXISTS user IDENTIFIED WITH sha256_password BY '123';
+    GRANT ALL ON db.* TO user;
+  custom-config.xml: |
+    <yandex>
+      <listen_host>0.0.0.0</listen_host>
+      <!-- Разрешить подключения с любого хоста -->
+    </yandex>

@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PINN Buckley Laverette</title>
+
+    <link href="/static/css/bootstrap.min.css" rel="stylesheet">
+
+    <link href="/static/css/style.css" rel="stylesheet">
+</head>
+<body>
+    <div class="container mt-5">
+        <h1 class="mb-4">PINN Buckley Laverette</h1>
+
+        {% if message %}
+        <div class="alert alert-{{ message_type }} alert-dismissible fade show" role="alert">
+            {{ message }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+        {% endif %}
+
+        <!-- Форма загрузки данных -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5>Шаг 1: Загрузка данных</h5>
+            </div>
+            <div class="card-body">
+                <form action="/upload/" method="post" enctype="multipart/form-data" id="uploadForm">
+                    <div class="mb-3">
+                        <label for="file" class="form-label">Выберите CSV файл:</label>
+                        <input class="form-control" type="file" id="file" name="file" accept=".csv" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="num_points" class="form-label">Количество точек коллокации:</label>
+                        <input type="number" class="form-control" id="num_points" name="num_points" value="300" min="1" required>
+                    </div>
+                    <button type="submit" class="btn btn-primary" id="uploadButton">
+                        Загрузить данные
+                    </button>
+                    <div id="uploadLoading" class="mt-2" style="display: none;">
+                        <div class="spinner-border spinner-border-sm text-primary" role="status">
+                            <span class="visually-hidden">Загрузка...</span>
+                        </div>
+                        <span class="ms-2">Загрузка и обработка данных...</span>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Обновление точек коллокации -->
+        {% if data_loaded %}
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5>Обновление точек коллокации</h5>
+            </div>
+            <div class="card-body">
+                <form action="/update_collocation/" method="post" id="updateCollocationForm">
+                    <div class="mb-3">
+                        <label for="update_num_points" class="form-label">Новое количество точек коллокации:</label>
+                        <input type="number" class="form-control" id="update_num_points" name="num_points" value="300" min="1" required>
+                    </div>
+                    <button type="submit" class="btn btn-warning" id="updateCollocationButton">
+                        Обновить точки коллокации
+                    </button>
+                    <div id="updateLoading" class="mt-2" style="display: none;">
+                        <div class="spinner-border spinner-border-sm text-warning" role="status">
+                            <span class="visually-hidden">Загрузка...</span>
+                        </div>
+                        <span class="ms-2">Обновление точек коллокации...</span>
+                    </div>
+                    <small class="form-text text-muted">Это обновит только точки коллокации без изменения тренировочных данных.</small>
+                </form>
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Кнопка запуска ML модели -->
+        <div class="card">
+            <div class="card-header">
+                <h5>Шаг 2: Запуск ML модели (PINN)</h5>
+            </div>
+            <div class="card-body">
+                {% if data_loaded %}
+                <form action="/run_ml/" method="post" id="mlForm">
+                    <!-- Параметры ML модели -->
+                    <div class="row mb-3">
+                        <div class="col-md-3">
+                            <label for="num_layers" class="form-label">Количество промежуточных слоев:</label>
+                            <input type="number" class="form-control" id="num_layers" name="num_layers" value="10" min="1" max="50" required>
+                            <div class="form-text">1-50 слоев</div>
+                        </div>
+                        <div class="col-md-3">
+                            <label for="num_perceptrons" class="form-label">Нейронов в слое:</label>
+                            <input type="number" class="form-control" id="num_perceptrons" name="num_perceptrons" value="10" min="1" max="200" required>
+                            <div class="form-text">1-200 нейронов</div>
+                        </div>
+                        <div class="col-md-3">
+                            <label for="num_epoch" class="form-label">Количество эпох:</label>
+                            <input type="number" class="form-control" id="num_epoch" name="num_epoch" value="5000" min="100" max="100000" step="100" required>
+                            <div class="form-text">100-100000 эпох</div>
+                        </div>
+                        <div class="col-md-3">
+                            <label for="optimizer" class="form-label">Оптимизатор:</label>
+                            <select class="form-select" id="optimizer" name="optimizer" required>
+                                <option value="Adam" selected>Adam</option>
+                            </select>
+                            <div class="form-text">Выбор алгоритма оптимизации</div>
+                        </div>
+                    </div>
+
+                    <!-- Конфигурация весов ошибок -->
+                    <div class="mb-4">
+                        <label for="loss_weights_config" class="form-label">Конфигурация весов ошибок:</label>
+                        <textarea class="form-control" id="loss_weights_config" name="loss_weights_config" rows="4"
+                                  placeholder='Пример: 0:10.0,1.0; 1000:3.0,1.0; 5000:1.0,1.0&#10;Формат: эпоха:вес_данных,вес_уравнения'></textarea>
+                        <div class="form-text">
+                            Настройте веса ошибок для разных этапов обучения. Формат: "эпоха:вес_данных,вес_уравнения".<br>
+                            Пример: "0:10.0,1.0; 1000:3.0,1.0; 5000:1.0,1.0" означает:<br>
+                            - С 0 по 1000 эпоху: вес данных=10.0, вес уравнения=1.0<br>
+                            - С 1000 по 5000 эпоху: вес данных=3.0, вес уравнения=1.0<br>
+                            - После 5000 эпох: вес данных=1.0, вес уравнения=1.0<br>
+                            Оставьте пустым для использования значений по умолчанию.
+                        </div>
+                    </div>
+
+                    <button type="submit" class="btn btn-success" id="mlButton">
+                        Запустить ML модель (PINN)
+                    </button>
+                    <div id="mlLoading" class="mt-2" style="display: none;">
+                        <div class="spinner-border spinner-border-sm text-success" role="status">
+                            <span class="visually-hidden">Загрузка...</span>
+                        </div>
+                        <span class="ms-2">ML модель выполняется... Это может занять несколько минут.</span>
+                    </div>
+                    <small class="form-text text-muted">Данные загружены. Можно запускать Physics-Informed Neural Network.</small>
+                </form>
+                {% else %}
+                <button type="button" class="btn btn-secondary" disabled>Запустить ML модель</button>
+                <small class="form-text text-muted">Сначала загрузите данные чтобы активировать эту кнопку.</small>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Результаты ML модели - всегда показываем если есть -->
+        {% if ml_results %}
+        <div class="card mt-4 results-section">
+            <div class="card-header {% if ml_results.status == 'success' %}bg-success{% else %}bg-danger{% endif %} text-white">
+                <h5>Результаты обучения ML модели</h5>
+            </div>
+            <div class="card-body">
+                {% if ml_results.status == "success" %}
+                    <!-- График обучения -->
+                    {% if ml_results.training_plot %}
+                    <div class="plot-container">
+                        <h6>График обучения</h6>
+                        <img src="{{ ml_results.training_plot }}" class="plot-image" alt="Training Plot">
+                    </div>
+                    {% else %}
+                    <div class="alert alert-warning">
+                        График обучения недоступен
+                    </div>
+                    {% endif %}
+
+                    <!-- Основные результаты -->
+                    <div class="mb-4">
+                        <h6>Основные результаты обучения</h6>
+                        <div class="table-responsive">
+                            <table class="table table-bordered">
+                                <tbody>
+                                    <tr>
+                                        <th>Количество эпох:</th>
+                                        <td>{{ ml_results.training_epochs }}</td>
+                                    </tr>
+                                    <tr>
+                                        <th>Количество слоев:</th>
+                                        <td>{{ ml_results.model_layers }}</td>
+                                    </tr>
+                                    <tr>
+                                        <th>Количество перцептронов в слое:</th>
+                                        <td>{{ ml_results.num_perceptrons }}</td>
+                                    </tr>
+                                    <tr>
+                                        <th>Оптимизатор:</th>
+                                        <td>{{ ml_results.optimizer }}</td>
+                                    </tr>
+                                    <tr>
+                                        <th>Время обучения:</th>
+                                        <td>{{ "%.2f"|format(ml_results.training_model_time) }} с</td>
+                                    </tr>
+                                    <tr>
+                                        <th>Лучшая ошибка:</th>
+                                        <td>{{ "%.2e"|format(ml_results.best_loss) }}</td>
+                                    </tr>
+                                    {% if ml_results.loss_weights_used %}
+                                    <tr>
+                                        <th>Использованные веса ошибок:</th>
+                                        <td>{{ ml_results.loss_weights_used }}</td>
+                                    </tr>
+                                    {% endif %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- Кнопка скачивания модели -->
+                    <div class="mt-3">
+                        <a href="/download_model" class="btn btn-outline-primary">
+                            Скачать модель (Keras)
+                        </a>
+                        <small class="form-text text-muted">Скачайте обученную модель в формате Keras для дальнейшего использования.</small>
+                    </div>
+                {% else %}
+                    <div class="alert alert-danger">
+                        <strong>Ошибка при обучении модели:</strong> {{ ml_results.message }}
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Форма для предсказания - показываем если ML модель успешно обучена -->
+        {% if ml_results and ml_results.status == "success" %}
+        <div class="card mt-4">
+            <div class="card-header bg-info text-white">
+                <h5>Шаг 3: Предсказание модели</h5>
+            </div>
+            <div class="card-body">
+                <form action="/predict/" method="post" id="predictForm">
+                    <div class="row mb-3">
+                        <div class="col-md-4">
+                            <label for="num_x_points" class="form-label">Количество точек по X:</label>
+                            <input type="number" class="form-control" id="num_x_points" name="num_x_points"
+                                   value="{% if prediction_results %}{{ prediction_results.num_x_points }}{% else %}100{% endif %}"
+                                   min="10" max="1000" required>
+                            <div class="form-text">10-1000 точек</div>
+                        </div>
+                        <div class="col-md-4">
+                            <label for="prediction_time" class="form-label">Время для предсказания (t):</label>
+                            <input type="number" class="form-control" id="prediction_time" name="prediction_time"
+                                   value="{% if prediction_results %}{{ prediction_results.prediction_time }}{% else %}0.5{% endif %}"
+                                   step="0.1" min="0" required>
+
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">&nbsp;</label>
+                            <button type="submit" class="btn btn-info w-100" id="predictButton">
+                                Построить предсказание
+                            </button>
+                            <div id="predictLoading" class="mt-2" style="display: none;">
+                                <div class="spinner-border spinner-border-sm text-info" role="status">
+                                    <span class="visually-hidden">Загрузка...</span>
+                                </div>
+                                <span class="ms-2">Построение графика...</span>
+                            </div>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Результаты предсказания - показываем отдельно если есть -->
+        {% if prediction_results %}
+        <div class="card mt-4">
+            <div class="card-header {% if prediction_results.status == 'success' %}bg-success{% else %}bg-danger{% endif %} text-white">
+                <h5>Результаты предсказания</h5>
+            </div>
+            <div class="card-body">
+                {% if prediction_results.status == "success" %}
+                    <h6>Предсказание модели в момент времени t = {{ prediction_results.prediction_time }} ({{ prediction_results.num_x_points }} точек)</h6>
+
+                    {% if prediction_results.prediction_plot %}
+                    <div class="plot-container">
+                        <img src="{{ prediction_results.prediction_plot }}" class="plot-image" alt="Prediction Plot">
+                    </div>
+                    {% else %}
+                    <div class="alert alert-warning">
+                        График предсказания недоступен
+                    </div>
+                    {% endif %}
+                {% else %}
+                    <div class="alert alert-danger">
+                        <strong>Ошибка при выполнении предсказания:</strong><br>
+                        {{ prediction_results.message }}
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+        {% endif %}
+    </div>
+
+
+    <script src="/static/js/bootstrap.bundle.min.js"></script>
+
+    <script src="/static/js/script.js"></script>
+</body>
+</html>

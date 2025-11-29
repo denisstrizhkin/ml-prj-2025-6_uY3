@@ -1,0 +1,11 @@
+fastapi
+uvicorn
+clickhouse-driver
+pandas
+numpy
+tensorflow
+scipy
+matplotlib
+pyDOE
+httpx
+minio
