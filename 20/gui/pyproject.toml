@@ -1,0 +1,41 @@
+[project]
+name = "gas-sensor-gui"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = [
+    "matplotlib>=3.10.3",
+    "numpy>=2.3.1",
+    "pandas>=2.3.0",
+    "raylib>=5.5.0.2",
+    "scikit-learn>=1.7.0",
+    "torch>=2.7.1",
+]
+
+[tool.ruff]
+line-length = 79
+
+[tool.ruff.lint]
+select = [
+    # pycodestyle
+    "E",
+    # Pyflakes
+    "F",
+    # pyupgrade
+    "UP",
+    # flake8-bugbear
+    "B",
+    # flake8-simplify
+    "SIM",
+    # isort
+    "I",
+]
+
+[dependency-groups]
+dev = [
+    "mypy>=1.16.1",
+    "pyinstaller>=6.14.1",
+    "python-lsp-server[all]>=1.12.2",
+    "ruff>=0.12.0",
+]
